@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rueda Especial 25 de Mayo (Números)</title>
+    <style>
+        :root {
+            --celeste: #74ACDF;
+            --blanco: #FFFFFF;
+            --amarillo: #F6B426;
+            --oscuro: #2C3E50;
+            --gris-claro: #ECF0F1;
+            --verde: #2ECC71;
+            --rojo: #E74C3C;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background-color: var(--gris-claro);
+            color: var(--oscuro);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 4px solid var(--celeste);
+            padding-bottom: 10px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        h1 {
+            color: var(--oscuro);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .rueda-container {
+            position: relative;
+            width: 350px;
+            height: 350px;
+        }
+
+        #canvas-rueda {
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            transition: transform 4s cubic-bezier(0.1, 0.8, 0.1, 1);
+        }
+
+        .marcador {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid var(--amarillo);
+            z-index: 10;
+        }
+
+        button.btn {
+            background-color: var(--celeste);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background 0.2s;
+        }
+
+        button.btn:hover { background-color: #5b92c6; }
+        button.btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+
+        .modal-content {
+            background-color: var(--blanco);
+            padding: 25px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .opciones-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .btn-opcion {
+            background-color: var(--gris-claro);
+            border: 2px solid #bdc3c7;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: left;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-opcion.correcto {
+            background-color: var(--verde) !important;
+            color: white;
+            border-color: #27ae60;
+        }
+
+        .btn-opcion.incorrecto {
+            background-color: var(--rojo) !important;
+            color: white;
+            border-color: #c0392b;
+        }
+
+        .form-grupo { margin-bottom: 15px; }
+        .form-grupo label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .form-grupo input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .pregunta-bloque { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 6px; }
+        .opcion-edit-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        
+        .btn-sm { padding: 4px 8px; font-size: 12px; border-radius: 3px; cursor: pointer; border: none; background: #95a5a6; color: white;}
+        .btn-add { background-color: var(--verde); }
+        .btn-del { background-color: var(--rojo); }
+
+        .controles-partida { display: flex; gap: 15px; margin-top: 10px; }
+        .btn-danger { background-color: var(--rojo); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="titulo-app" title="Doble clic para editar">LA RUEDA DE MAYO</h1>
+        <p>Girá la rueda y respondé las preguntas</p>
+    </header>
+
+    <div class="container">
+        <div class="rueda-container">
+            <div class="marcador"></div>
+            <canvas id="canvas-rueda" width="350" height="350"></canvas>
+        </div>
+
+        <div class="controles-partida">
+            <button id="btn-girar" class="btn">¡Girar Rueda!</button>
+            <button id="btn-limpiar" class="btn btn-danger">Reiniciar el juego</button>
+        </div>
+    </div>
+
+    <div id="modal-pregunta" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-seccion-titulo" style="color: var(--celeste);">Sección</h2>
+            <hr style="margin: 10px 0; border: 1px solid var(--gris-claro);">
+            <p id="pregunta-texto" style="font-size: 18px; font-weight: bold; margin-bottom: 15px;"></p>
+            
+            <div id="opciones-box" class="opciones-container"></div>
+            
+            <button id="btn-siguiente-pregunta" class="btn" style="display:none; width: 100%;">Siguiente Pregunta</button>
+            <button id="btn-cerrar-modal" class="btn btn-danger" style="display:none; width: 100%;">Terminar Sección</button>
+        </div>
+    </div>
+
+    <div id="modal-editor" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <h2>Panel Docente Avanzado</h2>
+            <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 15px;">Gestioná las preguntas asociadas a cada número de la rueda.</p>
+            
+            <div class="form-grupo">
+                <label for="select-seccion-edit">Seleccionar Número a Editar:</label>
+                <select id="select-seccion-edit" style="width: 100%; padding: 8px;" onchange="cargarSeccionEnEditor()"></select>
+            </div>
+            
+            <div class="form-grupo">
+                <label>Nombre o Temática del Número:</label>
+                <input type="text" id="edit-seccion-nombre">
+            </div>
+            
+            <div style="display:flex; justify-content: space-between; align-items: center; margin: 20px 0 10px 0;">
+                <h3>Preguntas de este número</h3>
+                <button type="button" class="btn-sm btn-add" onclick="agregarNuevaPreguntaAEditor()">➕ Agregar Pregunta</button>
+            </div>
+            
+            <div id="preguntas-edit-container"></div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn" onclick="guardarDatosEditor()">Guardar Cambios</button>
+                <button class="btn btn-danger" onclick="cerrarEditor()">Cerrar sin Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CLAVE_CORRECTA = 'admin123';
+
+        const datosPorDefecto = {
+            secciones: [
+                {
+                    id: 0,
+                    titulo: "Número 1: La Primera Junta",
+                    preguntas: [
+                        { texto: "¿Quién fue designado presidente de la Primera Junta de Gobierno?", opciones: ["Mariano Moreno", "Cornelio Saavedra", "Juan José Paso"], correctas: [1] },
+                        { texto: "¿Quiénes cumplieron el rol de Secretarios en la Primera Junta? (Hay más de una correcta)", opciones: ["Mariano Moreno", "Juan José Paso", "Manuel Belgrano"], correctas: [0, 1] },
+                        { texto: "¿Qué juramento formal hizo la Junta al asumir el poder?", opciones: ["Fidelidad al rey cautivo Fernando VII", "Independencia absoluta de España", "Anexión a las Provincias del Norte"], correctas: [0] }
+                    ]
+                },
+                {
+                    id: 1,
+                    titulo: "Número 2: El Cabildo Abierto",
+                    preguntas: [
+                        { texto: "¿Qué día clave de la Semana de Mayo se celebró el famoso Cabildo Abierto?", opciones: ["El 18 de mayo", "El 22 de mayo", "El 25 de mayo"], correctas: [1] },
+                        { texto: "¿Quiénes tenían derecho a asistir y votar en el Cabildo Abierto?", opciones: ["Todos los habitantes nativos", "Los vecinos estables de estatus acomodado y militar", "Solo los sacerdotes de la ciudad"], correctas: [1] },
+                        { texto: "¿Cuál fue el argumento central de los criollos en los debates del Cabildo Abierto?", opciones: ["La teoría de la retroversión de la soberanía al pueblo", "El apoyo incondicional a Napoleón Bonaparte", "La disolución total de la Iglesia"], correctas: [0] }
+                    ]
+                },
+                {
+                    id: 2,
+                    titulo: "Número 3: Protagonistas",
+                    preguntas: [
+                        { texto: "Además de abogado, ¿qué otra profesión u oficio relevante tenía Manuel Belgrano en 1810?", opciones: ["Médico cirujano", "Periodista y economista", "Ingeniero naval"], correctas: [1] },
+                        { texto: "¿Cuál de estos personajes se destacó por liderar el ala más radical y revolucionaria de la Junta?", opciones: ["Mariano Moreno", "Cornelio Saavedra", "Miguel de Azcuénaga"], correctas: [0] },
+                        { texto: "¿Qué miembros de la junta representaban formalmente a la Iglesia y al Clero?", opciones: ["Juan Larrea", "Manuel Alberti", "Domingo Matheu"], correctas: [1] }
+                    ]
+                },
+                {
+                    id: 3,
+                    titulo: "Número 4: El Virrey Cisneros",
+                    preguntas: [
+                        { texto: "A qué monarca representaba el Virrey Baltasar Hidalgo de Cisneros?", opciones: ["Carlos III", "Fernando VII", "José Bonaparte"], correctas: [1] },
+                        { texto: "¿Qué suceso en Europa precipitó la pérdida de autoridad legítima de Cisneros?", opciones: ["La caída de la Junta Central de Sevilla ante los franceses", "La batalla de Trafalgar", "La coronación de Luis XIV"], correctas: [0] },
+                        { texto: "¿Qué intentó hacer Cisneros el 24 de mayo para mantenerse en el poder?", opciones: ["Huir hacia Montevideo", "Formar una junta presidida por él mismo", "Clausurar definitivamente el Cabildo"], correctas: [1] }
+                    ]
+                },
+                {
+                    id: 4,
+                    titulo: "Número 5: El Pueblo en la Plaza",
+                    preguntas: [
+                        { texto: "¿Cómo se llamaba en 1810 el espacio que hoy conocemos como Plaza de Mayo?", opciones: ["Plaza de la Victoria o Plaza Mayor", "Plaza del Mercado", "Plaza del Congreso"], correctas: [0] },
+                        { texto: "¿Qué factor climático quedó inmortalizado en los relatos tradicionales del 25 de Mayo?", opciones: ["Una intensa ola de calor", "Un día gris y muy lluvioso", "Una tormenta eléctrica con granizo"], correctas: [1] },
+                        { texto: "¿Quiénes lideraban a los agitadores civiles conocidos como 'La Legión Infernal'?", opciones: ["Saavedra y Belgrano", "French y Beruti", "Moreno y Paso"], correctas: [1] }
+                    ]
+                },
+                {
+                    id: 5,
+                    titulo: "Número 6: Mitos y Símbolos",
+                    preguntas: [
+                        { texto: "Según las investigaciones históricas modernas, ¿qué repartían realmente French y Beruti en la plaza?", opciones: ["Escarapelas celestes y blancas tejidas", "Cintas blancas y retratos del rey o cintas rojas", "Paraguas importados"], correctas: [1] },
+                        { texto: "¿En qué año se creó oficialmente la Escarapela Nacional Argentina con sus colores actuales?", opciones: ["1810", "1812", "1816"], correctas: [1] },
+                        { texto: "El cuadro famoso de los paraguas frente al Cabildo muestra una realidad. ¿Eran comunes los paraguas en esa época?", opciones: ["No, eran un objeto de lujo absoluto para unos pocos", "Sí, toda la población humilde los tenía", "No existían en el Virreinato"], correctas: [0] }
+                    ]
+                },
+                {
+                    id: 6,
+                    titulo: "Número 7: Sociedad de 1810",
+                    preguntas: [
+                        { texto: "¿Qué sector social conformaba la base de las milicias criollas urbanas (como los Patricios)?", opciones: ["Los esclavos e indígenas exclusivamente", "Los vecinos criollos, artesanos y clases medias", "La alta aristocracia española"], correctas: [1] },
+                        { texto: "¿Qué medio de transporte terrestre era el más utilizado para largas distancias en el Virreinato?", opciones: ["El tren a vapor", "La carreta y las galeras tiradas por caballos", "El tranvía a tracción a sangre"], correctas: [1] },
+                        { texto: "¿Qué tareas solían realizar los vendedores ambulantes de la época colonial? (Varias correctas)", opciones: ["Repartir agua de río a domicilio", "Vender velas para iluminar las casas", "Ofrecer servicios de conexión digital"], correctas: [0, 1] }
+                    ]
+                },
+                {
+                    id: 7,
+                    titulo: "Número 8: La Comunicación",
+                    preguntas: [
+                        { texto: "¿Cuál fue el primer periódico oficial de la revolución, fundado por Mariano Moreno en junio de 1810?", opciones: ["El Telégrafo Mercantil", "La Gazeta de Buenos Ayres", "El Censor"], correctas: [1] },
+                        { texto: "¿Cómo llegaban las noticias internacionales desde Europa al Río de la Plata?", opciones: ["A través de barcos transatlánticos que tardaban meses", "Por medio de palomas mensajeras de alta velocidad", "Por telégrafo óptico"], correctas: [0] },
+                        { texto: "¿Cómo se enteraba de los bandos del gobierno la población que no sabía leer ni escribir?", opciones: ["A través del pregonero que los leía a viva voz en las esquinas", "Por medio de panfletos ilustrados", "Mediante reuniones secretas obligatorias"], correctas: [0] }
+                    ]
+                },
+                {
+                    id: 8,
+                    titulo: "Número 9: El Contexto Mundial",
+                    preguntas: [
+                        { texto: "¿Qué emperador europeo había invadido España en 1808 desatando la crisis?", opciones: ["Luis XVI", "Napoleón Bonaparte", "Leopoldo II"], correctas: [1] },
+                        { texto: "¿Qué país colaboró económicamente y comercialmente con los revolucionarios buscando el libre comercio?", opciones: ["Gran Bretaña", "Portugal", "Francia"], correctas: [0] },
+                        { texto: "¿Qué otra gran revolución americana del siglo XVIII sirvió de antecedente ideológico a los criollos?", opciones: ["La Independencia de los Estados Unidos (1776)", "La Revolución Industrial", "La unificación de Italia"], correctas: [0] }
+                    ]
+                },
+                {
+                    id: 9,
+                    titulo: "Número 10: Consecuencias",
+                    preguntas: [
+                        { texto: "¿Qué pasó con el Virreinal territorio del Río de la Plata tras el 25 de mayo?", opciones: ["Inició una larga guerra civil e internacional por la emancipación", "Aceptó inmediatamente la soberanía de Portugal", "Volvió a la normalidad colonial en pocos meses"], correctas: [0] },
+                        { texto: "¿Qué destino militar inmediato se le dio a la expedición auxiliadora enviada al interior del país?", opciones: ["Asegurar el control de Córdoba y el Alto Perú para la revolución", "Negociar la paz con España", "Invadir las costas de Brasil"], correctas: [0] },
+                        { texto: "¿Logró el 25 de mayo de 1810 declarar formalmente la Independencia absoluta?", opciones: ["Sí, ese mismo día se firmó el acta oficial", "No, eso ocurriría recién el 9 de julio de 1816", "No, nunca se llegó a declarar"], correctas: [1] }
+                    ]
+                }
+            ]
+        };
+
+        let datosJuego = JSON.parse(localStorage.getItem('rueda_patria_numeros_v1')) || datosPorDefecto;
+        let historialPartida = Array.from({length: 10}, () => 0); 
+
+        const canvas = document.getElementById('canvas-rueda');
+        const ctx = canvas.getContext('2d');
+        const totalSecciones = 10;
+        const anguloSeccion = (2 * Math.PI) / totalSecciones;
+        let anguloActual = 0;
+        let estaGirando = false;
+        const coloresRueda = ['#74ACDF', '#FFFFFF', '#74ACDF', '#FFFFFF', '#74ACDF', '#FFFFFF', '#74ACDF', '#FFFFFF', '#74ACDF', '#FFFFFF'];
+
+        function dibujarRueda() {
+            const centro = canvas.width / 2;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < totalSecciones; i++) {
+                const anguloInicio = i * anguloSeccion + anguloActual;
+                const anguloFin = anguloInicio + anguloSeccion;
+                ctx.beginPath();
+                ctx.moveTo(centro, centro);
+                ctx.arc(centro, centro, centro - 5, anguloInicio, anguloFin);
+                ctx.fillStyle = coloresRueda[i];
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#2C3E50';
+                ctx.stroke();
+                
+                // Renderizar números en lugar de texto largo
+                ctx.save();
+                ctx.translate(centro, centro);
+                ctx.rotate(anguloInicio + anguloSeccion / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#2C3E50";
+                ctx.font = "bold 16px sans-serif";
+                
+                // Muestra del 1 al 10 de forma natural
+                ctx.fillText(i + 1, centro - 30, 6);
+                ctx.restore();
+            }
+        }
+
+        document.getElementById('btn-girar').addEventListener('click', () => {
+            if (estaGirando) return;
+            estaGirando = true;
+            document.getElementById('btn-girar').disabled = true;
+            const vueltas = 5 + Math.floor(Math.random() * 5); 
+            const gradosAdicionales = Math.random() * (2 * Math.PI);
+            const cambioAnguloTarget = vueltas * 2 * Math.PI + gradosAdicionales;
+            let tiempoInicio = null;
+            const duracion = 4000; 
+
+            function animarRueda(tiempoActual) {
+                if (!tiempoInicio) tiempoInicio = tiempoActual;
+                const progreso = tiempoActual - tiempoInicio;
+                const t = progreso / duracion;
+                const factorEesing = 1 - Math.pow(1 - t, 3);
+                anguloActual = (factorEesing * cambioAnguloTarget) % (2 * Math.PI);
+                dibujarRueda();
+                if (progreso < duracion) { requestAnimationFrame(animarRueda); } 
+                else {
+                    estaGirando = false;
+                    document.getElementById('btn-girar').disabled = false;
+                    calcularSeccionGanadora();
+                }
+            }
+            requestAnimationFrame(animarRueda);
+        });
+
+        function calcularSeccionGanadora() {
+            const anguloMarcador = 3 * Math.PI / 2;
+            let anguloNormalizado = (anguloMarcador - anguloActual) % (2 * Math.PI);
+            if (anguloNormalizado < 0) anguloNormalizado += 2 * Math.PI;
+            const seccionIndex = Math.floor(anguloNormalizado / anguloSeccion) % totalSecciones;
+            abrirModalPregunta(seccionIndex);
+        }
+
+        let seccionActivaGlobal = null;
+
+        function abrirModalPregunta(seccionIndex) {
+            seccionActivaGlobal = seccionIndex;
+            const seccion = datosJuego.secciones[seccionIndex];
+            const preguntaActualIndex = historialPartida[seccionIndex];
+            const totalPreguntasSeccion = seccion.preguntas.length;
+
+            document.getElementById('modal-seccion-titulo').innerText = seccion.titulo;
+            
+            if (totalPreguntasSeccion === 0 || preguntaActualIndex >= totalPreguntasSeccion) {
+                document.getElementById('pregunta-texto').innerText = "¡Este número ya completó todas las preguntas disponibles!";
+                document.getElementById('opciones-box').innerHTML = "";
+                document.getElementById('btn-siguiente-pregunta').style.display = "none";
+                document.getElementById('btn-cerrar-modal').style.display = "block";
+                document.getElementById('modal-pregunta').style.display = "flex";
+                return;
+            }
+
+            const pregunta = seccion.preguntas[preguntaActualIndex];
+            document.getElementById('pregunta-texto').innerText = `(${preguntaActualIndex + 1}/${totalPreguntasSeccion}) ${pregunta.texto}`;
+            
+            const boxOpciones = document.getElementById('opciones-box');
+            boxOpciones.innerHTML = "";
+
+            pregunta.opciones.forEach((opcion, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "btn-opcion";
+                btn.innerText = opcion;
+                btn.onclick = () => verificarOpcion(btn, idx, pregunta.correctas, totalPreguntasSeccion);
+                boxOpciones.appendChild(btn);
+            });
+
+            document.getElementById('btn-siguiente-pregunta').style.display = "none";
+            document.getElementById('btn-cerrar-modal').style.display = "none";
+            document.getElementById('modal-pregunta').style.display = "flex";
+        }
+
+        function verificarOpcion(btnTarget, idxSeleccionado, indicesCorrectos, totalPreguntas) {
+            if (indicesCorrectos.includes(idxSeleccionado)) {
+                btnTarget.classList.add('correcto');
+            } else {
+                btnTarget.classList.add('incorrecto');
+                const todosLosBotones = document.getElementById('opciones-box').children;
+                indicesCorrectos.forEach(cIdx => {
+                    if(todosLosBotones[cIdx]) todosLosBotones[cIdx].classList.add('correcto');
+                });
+            }
+
+            const botones = document.getElementById('opciones-box').getElementsByClassName('btn-opcion');
+            for(let b of botones) { b.disabled = true; }
+
+            historialPartida[seccionActivaGlobal]++;
+
+            if (historialPartida[seccionActivaGlobal] < totalPreguntas) {
+                document.getElementById('btn-siguiente-pregunta').style.display = "block";
+            } else {
+                document.getElementById('btn-cerrar-modal').style.display = "block";
+            }
+        }
+
+        document.getElementById('btn-siguiente-pregunta').addEventListener('click', () => abrirModalPregunta(seccionActivaGlobal));
+        document.getElementById('btn-cerrar-modal').addEventListener('click', () => document.getElementById('modal-pregunta').style.display = "none");
+
+        document.getElementById('btn-limpiar').addEventListener('click', () => {
+            if(confirm("¿Reiniciar el historial de la partida?")){
+                historialPartida = Array.from({length: 10}, () => 0);
+                alert("Historial de juego borrado de la memoria.");
+            }
+        });
+
+        // --- ENTORNO DE EDICIÓN ---
+        let preguntasTemporales = []; 
+
+        document.getElementById('titulo-app').addEventListener('dblclick', () => {
+            const pass = prompt("Contraseña docente:");
+            if (pass === CLAVE_CORRECTA) abrirEditor();
+        });
+
+        function abrirEditor() {
+            const select = document.getElementById('select-seccion-edit');
+            select.innerHTML = "";
+            datosJuego.secciones.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id; opt.innerText = `Posición ${s.id + 1}`; select.appendChild(opt);
+            });
+            cargarSeccionEnEditor();
+            document.getElementById('modal-editor').style.display = "flex";
+        }
+
+        function cargarSeccionEnEditor() {
+            const idSec = document.getElementById('select-seccion-edit').value;
+            const seccion = datosJuego.secciones[idSec];
+            document.getElementById('edit-seccion-nombre').value = seccion.titulo;
+            preguntasTemporales = JSON.parse(JSON.stringify(seccion.preguntas));
+            renderizarPreguntasEditor();
+        }
+
+        function renderizarPreguntasEditor() {
+            const container = document.getElementById('preguntas-edit-container');
+            container.innerHTML = "";
+
+            preguntasTemporales.forEach((p, pIdx) => {
+                const bloque = document.createElement('div');
+                bloque.className = "pregunta-bloque";
+                
+                let opcionesHtml = '';
+                p.opciones.forEach((opc, oIdx) => {
+                    opcionesHtml += `
+                        <div class="opcion-edit-item">
+                            <input type="checkbox" onchange="actualizarCheckboxTemporal(${pIdx}, ${oIdx}, this.checked)" ${p.correctas.includes(oIdx)?'checked':''}>
+                            <input type="text" value="${opc}" oninput="actualizarTextoOpcionTemporal(${pIdx}, ${oIdx}, this.value)" style="width:100%; padding:4px;">
+                            <button type="button" class="btn-sm btn-del" onclick="eliminarOpcionTemporal(${pIdx}, ${oIdx})">❌</button>
+                        </div>
+                    `;
+                });
+
+                bloque.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <label style="color:var(--celeste); font-weight:bold;">Pregunta ${pIdx + 1}</label>
+                        <button type="button" class="btn-sm btn-del" onclick="eliminarPreguntaTemporal(${pIdx})">Eliminar</button>
+                    </div>
+                    <input type="text" value="${p.texto}" oninput="actualizarTextoPreguntaTemporal(${pIdx}, this.value)" style="width:100%; padding:6px; margin-bottom:10px;">
+                    <div id="opciones-container-${pIdx}">${opcionesHtml}</div>
+                    <button type="button" class="btn-sm btn-add" style="margin-top:5px;" onclick="agregarOpcionTemporal(${pIdx})">➕ Opción</button>
+                `;
+                container.appendChild(bloque);
+            });
+        }
+
+        function actualizarTextoPreguntaTemporal(pIdx, valor) { preguntasTemporales[pIdx].texto = valor; }
+        function actualizarTextoOpcionTemporal(pIdx, oIdx, valor) { preguntasTemporales[pIdx].opciones[oIdx] = valor; }
+        function actualizarCheckboxTemporal(pIdx, oIdx, isChecked) {
+            let correctas = preguntasTemporales[pIdx].correctas;
+            if(isChecked) { if(!correctas.includes(oIdx)) correctas.push(oIdx); } 
+            else { preguntasTemporales[pIdx].correctas = correctas.filter(idx => idx !== oIdx); }
+        }
+        function agregarNuevaPreguntaAEditor() {
+            preguntasTemporales.push({ texto: "Nueva Pregunta...", opciones: ["Opción 1"], correctas: [0] });
+            renderizarPreguntasEditor();
+        }
+        function eliminarPreguntaTemporal(pIdx) { preguntasTemporales.splice(pIdx, 1); renderizarPreguntasEditor(); }
+        function agregarOpcionTemporal(pIdx) { preguntasTemporales[pIdx].opciones.push("Nueva opción..."); renderizarPreguntasEditor(); }
+        function eliminarOpcionTemporal(pIdx, oIdx) {
+            preguntasTemporales[pIdx].options.splice(oIdx, 1); // fix typoo
+            preguntasTemporales[pIdx].correctas = preguntasTemporales[pIdx].correctas
+                .filter(idx => idx !== oIdx).map(idx => idx > oIdx ? idx - 1 : idx);
+            renderizarPreguntasEditor();
+        }
+
+        function guardarDatosEditor() {
+            const idSec = document.getElementById('select-seccion-edit').value;
+            datosJuego.secciones[idSec].titulo = document.getElementById('edit-seccion-nombre').value;
+            datosJuego.secciones[idSec].preguntas = JSON.parse(JSON.stringify(preguntasTemporales));
+            localStorage.setItem('rueda_patria_numeros_v1', JSON.stringify(datosJuego));
+            dibujarRueda();
+            alert("Cambios guardados con éxito.");
+        }
+
+        function cerrarEditor() { document.getElementById('modal-editor').style.display = "none"; }
+
+        dibujarRueda();
+    </script>
+</body>
+</html>
